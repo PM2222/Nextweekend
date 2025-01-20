@@ -30,7 +30,7 @@ exports.handler = async (event) => {
 
       // Update Supabase: Match email and update subscription status
       const { error } = await supabase
-        .from('users')
+        .from('profiles')
         .update({ subscription_status: 'active' })
         .eq('email', email);
 
@@ -59,4 +59,4 @@ exports.handler = async (event) => {
       body: JSON.stringify({ error: 'Webhook verification failed' })
     };
   }
-};
+}
