@@ -4,8 +4,8 @@ const { createClient } = require('@supabase/supabase-js');
 // Initialize Stripe and Supabase
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-12-18.acacia' });
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY // Use service-role key instead of anon key
 );
 
 exports.handler = async (event) => {
@@ -28,10 +28,17 @@ exports.handler = async (event) => {
       const customer = await stripe.customers.retrieve(customerId);
       const email = customer.email;
 
-      // Update Supabase: Match email and update subscription status
+      // Update Supabase: Match email and update subscription details
       const { error } = await supabase
         .from('profiles')
-        .update({ subscription_status: 'active' })
+        .update({
+          stripe_customer_id: customerId,
+          subscription_id: subscription.id,
+          subscription_status: subscription.status,
+          subscription_tier: subscription.items.data[0].price.lookup_key,
+          subscription_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          updated_at: new Date().toISOString()
+        })
         .eq('email', email);
 
       if (error) {
@@ -49,14 +56,14 @@ exports.handler = async (event) => {
     }
 
     return { 
-      statusCode: 400, 
-      body: JSON.stringify({ error: 'Unhandled event type' })
+      statusCode: 200, 
+      body: JSON.stringify({ message: 'Webhook received successfully' })
     };
   } catch (error) {
     console.error('Webhook error:', error);
     return { 
       statusCode: 400, 
-      body: JSON.stringify({ error: 'Webhook verification failed' })
+      body: JSON.stringify({ error: error.message })
     };
   }
-}
+};
